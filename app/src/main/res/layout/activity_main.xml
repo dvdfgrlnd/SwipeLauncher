@@ -1,26 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.fgrlnd.dvd.propeller.MainActivity">
+    tools:context="com.fgrlnd.dvd.propeller.MainActivity"
+    android:orientation="vertical"
+    android:background="@color/backgroundColor"
+    >
+    <TextView
+    android:id="@+id/searchField"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="@color/textColor"
+    android:textAlignment="center"
+    android:text=""
+    android:textSize="30dp"
+    />
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <RelativeLayout
+        <LinearLayout
             android:id="@+id/imageContainer"
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="match_parent"
+            >
+            <!--android:layout_below="@id/searchField">-->
 
-            <ListView
-                android:id="@+id/appList"
+            <GridView
+                android:id="@+id/mostUsedAppList"
+                android:numColumns="2"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
-            </ListView>
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                >
+            </GridView>
+            <GridView
+                android:id="@+id/recentAppList"
+                android:numColumns="2"
+                android:background="@drawable/border"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_weight="0.9"
+                >
+            </GridView>
 
-        </RelativeLayout>
+        </LinearLayout>
+
         <RelativeLayout
         android:id="@+id/canvasLayout"
         android:layout_width="match_parent"
@@ -33,4 +60,4 @@
                 tools:layout_editor_absoluteY="0dp" />
         </RelativeLayout>
     </RelativeLayout>
-</android.support.constraint.ConstraintLayout>
+</LinearLayout>

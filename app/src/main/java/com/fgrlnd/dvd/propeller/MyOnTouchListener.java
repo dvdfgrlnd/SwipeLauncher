@@ -3,6 +3,8 @@ package com.fgrlnd.dvd.propeller;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PorterDuff;
 import android.os.Handler;
 import android.view.MotionEvent;
 import android.view.View;
@@ -11,6 +13,7 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.function.BiConsumer;
 
 /**
  * Created by david on 3/25/18.
@@ -18,21 +21,35 @@ import java.util.Calendar;
 
 public class MyOnTouchListener implements View.OnTouchListener {
 
-    private final long CLICK_UPPER_THRESHOLD = 200;
+    private final long CLICK_UPPER_THRESHOLD = 500;
     private long startClickTime = 0;
     private Handler mHandler = null;
     private Position prev = null;
-    private Bitmap mBitmap;
+    private Canvas mCanvas;
     private Paint mPaint;
+    private Paint mUserPaint;
     private ArrayList<Position> drawnPoints = new ArrayList<>();
+    private Path mPath;
+    private OnClickInterface onClick;
+    private OnSwipeInterface onSwipe;
+    private float downX;
+    private float downY;
 
-    public MyOnTouchListener(int color, Bitmap bitmap) {
+    public MyOnTouchListener(int color, int userColor, Canvas canvas, OnClickInterface onClick, OnSwipeInterface onSwipe) {
         float lineWidth = 55.0f;
         mPaint = new Paint();
         mPaint.setColor(color);
         mPaint.setStrokeWidth(lineWidth);
+        mPaint.setStyle(Paint.Style.STROKE);
 
-        this.mBitmap = bitmap;
+        mUserPaint = new Paint();
+        mUserPaint.setColor(userColor);
+        mUserPaint.setStrokeWidth(lineWidth);
+        mUserPaint.setStyle(Paint.Style.STROKE);
+
+        this.mCanvas = canvas;
+        this.onClick = onClick;
+        this.onSwipe = onSwipe;
     }
 
     private long getTime() {
@@ -41,19 +58,30 @@ public class MyOnTouchListener implements View.OnTouchListener {
 
     @Override
     public boolean onTouch(final View view, MotionEvent motionEvent) {
-//                Log.d("OnTouch", String.format("Action: %d", motionEvent.getAction()));
+        Log.d("OnTouch", String.format("Action: %d", motionEvent.getAction()));
 //                return false;
         float x = motionEvent.getX();
         float y = motionEvent.getY();
         switch (motionEvent.getAction() & MotionEvent.ACTION_MASK) {
             case MotionEvent.ACTION_DOWN:
+                Log.d("onTouch", "action down");
+                downX = x;
+                downY = y;
                 startClickTime = getTime();
                 break;
             case MotionEvent.ACTION_UP:
+                Log.d("onTouch", "action up");
+                Log.d("onTouch", String.format("diff: (%f, %f)", (x - downX), (y - downY)));
                 // Distinguish between a click and swipe by checking the time between ACTION_DOWN and ACTION_UP
-                if ((getTime() - startClickTime) < CLICK_UPPER_THRESHOLD) {
-//                    onClick((int) x, (int) y);
+                float xDiff = Math.abs(x - downX);
+                float yDiff = Math.abs(y - downY);
+                float maxDiff = 15f;
+                if ((getTime() - startClickTime) < CLICK_UPPER_THRESHOLD && xDiff < maxDiff && yDiff < maxDiff) {
+                    Log.d("onTouch", String.format("x: %f, y: %f", x, y));
+                    clearScreen();
+                    onClick.onClick((int) x, (int) y);
                 } else {
+                    Log.d("onTouch", "onSwipe");
                     mHandler = new Handler();
                     // Wait for 1500 ms before accepting drawn letter
                     mHandler.postDelayed(new Runnable() {
@@ -61,8 +89,8 @@ public class MyOnTouchListener implements View.OnTouchListener {
                         public void run() {
                             Log.d("OnTouch", "Delay");
                             // Do letter recognition
-                            int w = mBitmap.getWidth();
-                            int h = mBitmap.getHeight();
+                            int w = mCanvas.getWidth();
+                            int h = mCanvas.getHeight();
                             int[] pixels = new int[w * h];
                             int newWidth = 28;
                             int newHeight = 28;
@@ -80,49 +108,53 @@ public class MyOnTouchListener implements View.OnTouchListener {
 
                             Bitmap b = Util.scaleImage(tmpBitmap, 100, 100);
                             int[] rect = Util.crop(b);
-                            b = Bitmap.createBitmap(b, rect[0], rect[1], rect[2], rect[3]);
-                            b = Util.scaleImage(b, newWidth, newHeight);
-                            b.getPixels(pixels, 0, newWidth, 0, 0, newWidth, newHeight);
-                            int[][] pixel2D = new int[newHeight][newWidth];
-                            for (int y = 0; y < newHeight; y++) {
-                                for (int x = 0; x < newWidth; x++) {
-                                    pixel2D[y][x] = pixels[(y * newWidth) + x];
-//                                            b.setPixel(x, y, pixel2D[y][x]);
+                            // Check that width and height is larger than 0
+                            if (rect[2] > 0 && rect[3] > 0) {
+                                b = Bitmap.createBitmap(b, rect[0], rect[1], rect[2], rect[3]);
+                                b = Util.scaleImage(b, newWidth, newHeight);
+                                b.getPixels(pixels, 0, newWidth, 0, 0, newWidth, newHeight);
+                                int[][] pixel2D = new int[newHeight][newWidth];
+                                for (int y = 0; y < newHeight; y++) {
+                                    for (int x = 0; x < newWidth; x++) {
+                                        pixel2D[y][x] = pixels[(y * newWidth) + x];
+                                    }
                                 }
-//                                        int py=pixel2D[y][0];
-//                                    Log.d("OnTouch", String.format("P: %d %d %d %d", Color.alpha(py), Color.red(py), Color.green(py), Color.blue(py)));
+                                onSwipe.onSwipe(pixel2D);
                             }
-                            String letter = recognition.findClosestLetter(pixel2D);
-                            Log.d("OnTouch", String.format("Closest letter: %s", letter));
-//                                    mCanvas.drawBitmap();
-                            // Clear all drawn points
-                            drawnPoints.clear();
-                            // Clear canvas
-                            mCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-//                                    b = BitmapFactory.decodeResource(getResources(), R.drawable.square);
-//                                    mImageView.setImageBitmap(b);
+                            clearScreen();
                             view.invalidate();
                         }
-                    }, 1500);
+                    }, 1000);
                 }
                 prev = null;
                 break;
             case MotionEvent.ACTION_MOVE:
+                Log.d("onTouch", "action move");
                 if (mHandler != null) {
                     mHandler.removeCallbacksAndMessages(null);
                 }
                 if (prev != null) {
-                    mCanvas.drawLine(prev.x, prev.y, x, y, mPaint);
+                    mPath.lineTo(x, y);
+                    mCanvas.drawPath(mPath, mUserPaint);
+                } else {
+                    mPath = new Path();
+                    mPath.moveTo(x, y);
                 }
                 prev = new Position(x, y);
                 // Store the drawn point
                 drawnPoints.add(prev);
                 view.invalidate();
-//                        Log.d("OnTouch", String.format("x: %f, y: %f", x, y));
                 break;
             default:
                 break;
         }
         return true;
+    }
+
+    private void clearScreen() {
+        // Clear all drawn points
+        drawnPoints.clear();
+        // Clear canvas
+        mCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
     }
 }

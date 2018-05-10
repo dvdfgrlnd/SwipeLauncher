@@ -3,6 +3,8 @@ package com.fgrlnd.dvd.propeller;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import letterrec.Letter;
 
@@ -13,6 +15,7 @@ import letterrec.Letter;
 public class LetterRecognition {
 
     private ArrayList<Letter> listOfLetters = null;
+    private Pattern p = Pattern.compile("[A-Z\\/]");
 
     public LetterRecognition(ArrayList<Letter> list) {
         this.listOfLetters = list;
@@ -67,11 +70,14 @@ public class LetterRecognition {
         int minInd = 0;
         double minVal = computeEuclideanDistance(listOfLetters.get(0).vector, vector);
         for (int i = 1; i < listOfLetters.size(); i++) {
-            double tmp = computeEuclideanDistance(listOfLetters.get(i).vector, vector);
+            Matcher m = p.matcher(listOfLetters.get(i).letter);
+            if (m.matches()) {
+                double tmp = computeEuclideanDistance(listOfLetters.get(i).vector, vector);
 //            Log.d("FindClosestLetter", String.format("value: %f", tmp));
-            if (tmp < minVal && i != 233) {
-                minInd = i;
-                minVal = tmp;
+                if (tmp < minVal) {
+                    minInd = i;
+                    minVal = tmp;
+                }
             }
         }
         Log.d("FindClosestLetter", String.format("index: %d, value: %f", minInd, minVal));
