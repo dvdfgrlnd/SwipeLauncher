@@ -223,24 +223,24 @@ public class MainActivity extends Activity {
     private void filterApps(String term) {
         List<App> sortedList;
         if (term == null) {
-            sortedList = new ArrayList<>(mInstalledApps);
-        } else {
-            sortedList = new ArrayList<>();
-            ArrayList<SearchResult> filteredList = new ArrayList<>();
-            for (App app : mInstalledApps) {
-                double distance = MinimumEditDistance.compute(term.toLowerCase(), app.name.toLowerCase());
-                Log.d("filterApps", String.format("%f", distance));
-                filteredList.add(new SearchResult(app, distance));
+            updateApps(true);
+            return;
+        }
+        sortedList = new ArrayList<>();
+        ArrayList<SearchResult> filteredList = new ArrayList<>();
+        for (App app : mInstalledApps) {
+            double distance = MinimumEditDistance.compute(term.toLowerCase(), app.name.toLowerCase());
+            Log.d("filterApps", String.format("%f", distance));
+            filteredList.add(new SearchResult(app, distance));
+        }
+        Collections.sort(filteredList, new Comparator<SearchResult>() {
+            @Override
+            public int compare(SearchResult sr1, SearchResult sr2) {
+                return Double.compare(sr1.editDistance, sr2.editDistance);
             }
-            Collections.sort(filteredList, new Comparator<SearchResult>() {
-                @Override
-                public int compare(SearchResult sr1, SearchResult sr2) {
-                    return Double.compare(sr1.editDistance, sr2.editDistance);
-                }
-            });
-            for (SearchResult result : filteredList) {
-                sortedList.add(result.app);
-            }
+        });
+        for (SearchResult result : filteredList) {
+            sortedList.add(result.app);
         }
 
         mRecentAdapter.changeAppList(sortedList);
